@@ -1,0 +1,10 @@
+name = "vertexid-api-call-system"
+main = "src/index.js"
+compatibility_date = "2026-08-23"
+
+# Set secrets with:
+# npx wrangler secret put TURSO_DATABASE_URL
+# npx wrangler secret put TURSO_AUTH_TOKEN
+# npx wrangler secret put JWT_SECRET
+#
+# Do NOT put real secrets in this file.
