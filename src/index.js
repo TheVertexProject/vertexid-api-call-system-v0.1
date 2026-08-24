@@ -2,7 +2,8 @@ const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET,POST,OPTIONS",
-  "access-control-allow-headers": "Content-Type, Authorization"
+  "access-control-allow-headers":
+    "Content-Type, Authorization"
 };
 
 const GOOGLE_AUTH_URL =
@@ -14,8 +15,7 @@ const GOOGLE_TOKEN_URL =
 const GOOGLE_USERINFO_URL =
   "https://openidconnect.googleapis.com/v1/userinfo";
 
-const GOOGLE_PROVIDER =
-  "google_drive";
+const GOOGLE_PROVIDER = "google_drive";
 
 const GOOGLE_REDIRECT_URI =
   "https://vertexid-api-call-system.vedaanranjan83.workers.dev/api/cloud/google/callback";
@@ -31,7 +31,7 @@ const PBKDF2_ITERATIONS = 100000;
 
 
 /* =========================================================
-   JSON RESPONSE
+   RESPONSE
 ========================================================= */
 
 function json(data, status = 200) {
@@ -98,7 +98,89 @@ function base64UrlToBytes(value) {
 
 
 /* =========================================================
-   PASSWORD HASH
+   TURSO VALUE PARSER
+========================================================= */
+
+function extractValue(value) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return null;
+  }
+
+  if (
+    typeof value !== "object"
+  ) {
+    return value;
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(
+      value,
+      "value"
+    )
+  ) {
+    return value.value;
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(
+      value,
+      "text"
+    )
+  ) {
+    return value.text;
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(
+      value,
+      "integer"
+    )
+  ) {
+    return value.integer;
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(
+      value,
+      "real"
+    )
+  ) {
+    return value.real;
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(
+      value,
+      "blob"
+    )
+  ) {
+    return value.blob;
+  }
+
+  return null;
+}
+
+function extractRowValues(row) {
+  if (Array.isArray(row)) {
+    return row;
+  }
+
+  if (
+    row &&
+    Array.isArray(row.values)
+  ) {
+    return row.values;
+  }
+
+  return [];
+}
+
+
+/* =========================================================
+   PASSWORD HASHING
 ========================================================= */
 
 async function hashPassword(
@@ -146,7 +228,6 @@ async function hashPassword(
   };
 }
 
-
 async function verifyPassword(
   password,
   salt,
@@ -164,17 +245,15 @@ async function verifyPassword(
     const result =
       await hashPassword(
         password,
-        base64UrlToBytes(
-          salt
-        )
+        base64UrlToBytes(salt)
       );
 
     const a = result.hash;
-    const b = String(
-      expectedHash
-    );
+    const b = String(expectedHash);
 
-    if (a.length !== b.length) {
+    if (
+      a.length !== b.length
+    ) {
       return false;
     }
 
@@ -214,9 +293,7 @@ async function hmac(
   const key =
     await crypto.subtle.importKey(
       "raw",
-      new TextEncoder().encode(
-        secret
-      ),
+      new TextEncoder().encode(secret),
       {
         name: "HMAC",
         hash: "SHA-256"
@@ -229,13 +306,10 @@ async function hmac(
     await crypto.subtle.sign(
       "HMAC",
       key,
-      new TextEncoder().encode(
-        data
-      )
+      new TextEncoder().encode(data)
     )
   );
 }
-
 
 async function createToken(
   vertexId,
@@ -283,7 +357,6 @@ async function createToken(
   return `${unsigned}.${signature}`;
 }
 
-
 async function verifyToken(
   token,
   secret
@@ -292,7 +365,9 @@ async function verifyToken(
     String(token || "")
       .split(".");
 
-  if (parts.length !== 3) {
+  if (
+    parts.length !== 3
+  ) {
     return null;
   }
 
@@ -351,12 +426,8 @@ async function verifyToken(
    TURSO
 ========================================================= */
 
-function tursoUrl(
-  databaseUrl
-) {
-  return String(
-    databaseUrl
-  )
+function tursoUrl(databaseUrl) {
+  return String(databaseUrl)
     .replace(
       /^libsql:\/\//,
       "https://"
@@ -366,32 +437,6 @@ function tursoUrl(
       "https://"
     );
 }
-
-
-function extractValue(
-  value
-) {
-  if (
-    value === null ||
-    value === undefined
-  ) {
-    return null;
-  }
-
-  if (
-    typeof value ===
-    "object"
-  ) {
-    if (
-      "value" in value
-    ) {
-      return value.value;
-    }
-  }
-
-  return value;
-}
-
 
 async function tursoQuery(
   env,
@@ -481,12 +526,10 @@ async function tursoQuery(
 
 
 /* =========================================================
-   DATABASE
+   DATABASE SCHEMA
 ========================================================= */
 
-async function ensureSchema(
-  env
-) {
+async function ensureSchema(env) {
   await tursoQuery(
     env,
     `
@@ -501,27 +544,18 @@ async function ensureSchema(
     `
   );
 
-
   await tursoQuery(
     env,
     `
     CREATE TABLE IF NOT EXISTS cloud_connections (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-
       user_id INTEGER NOT NULL,
-
       provider TEXT NOT NULL,
-
       provider_account_id TEXT,
-
       encrypted_refresh_token TEXT NOT NULL,
-
       scopes TEXT,
-
       status TEXT NOT NULL DEFAULT 'active',
-
       created_at TEXT NOT NULL,
-
       updated_at TEXT NOT NULL,
 
       UNIQUE(user_id, provider),
@@ -532,6 +566,19 @@ async function ensureSchema(
     )
     `
   );
+}
+
+
+/* =========================================================
+   JSON
+========================================================= */
+
+async function readJson(request) {
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
 }
 
 
@@ -559,25 +606,14 @@ async function getAuthenticatedUser(
   const token =
     authorization.slice(7);
 
+  if (!token) {
+    return null;
+  }
+
   return verifyToken(
     token,
     env.JWT_SECRET
   );
-}
-
-
-/* =========================================================
-   JSON BODY
-========================================================= */
-
-async function readJson(
-  request
-) {
-  try {
-    return await request.json();
-  } catch {
-    return null;
-  }
 }
 
 
@@ -644,7 +680,6 @@ async function register(
     );
 
   try {
-
     await tursoQuery(
       env,
       `
@@ -681,7 +716,6 @@ async function register(
     );
 
   } catch (error) {
-
     if (
       String(error.message)
         .toLowerCase()
@@ -696,7 +730,10 @@ async function register(
       );
     }
 
-    console.error(error);
+    console.error(
+      "Register error:",
+      error
+    );
 
     return json(
       {
@@ -718,9 +755,7 @@ async function login(
   env
 ) {
   const body =
-    await readJson(
-      request
-    );
+    await readJson(request);
 
   if (!body) {
     return json(
@@ -758,7 +793,6 @@ async function login(
   }
 
   try {
-
     const result =
       await tursoQuery(
         env,
@@ -776,9 +810,21 @@ async function login(
       );
 
     const rows =
-      result.rows || [];
+      Array.isArray(result.rows)
+        ? result.rows
+        : [];
 
-    if (!rows.length) {
+    if (
+      rows.length === 0
+    ) {
+      console.log({
+        loginVertexId:
+          vertexId,
+
+        reason:
+          "user_not_found"
+      });
+
       return json(
         {
           error:
@@ -788,12 +834,10 @@ async function login(
       );
     }
 
-    const row =
-      rows[0];
-
     const values =
-      row.values ||
-      row;
+      extractRowValues(
+        rows[0]
+      );
 
     const storedId =
       extractValue(
@@ -819,6 +863,9 @@ async function login(
       loginVertexId:
         vertexId,
 
+      rowValueCount:
+        values.length,
+
       hashLength:
         String(
           storedHash || ""
@@ -833,9 +880,10 @@ async function login(
     });
 
     if (
-      status !== "active" ||
+      !storedId ||
       !storedHash ||
-      !storedSalt
+      !storedSalt ||
+      status !== "active"
     ) {
       return json(
         {
@@ -849,8 +897,12 @@ async function login(
     const valid =
       await verifyPassword(
         password,
-        storedSalt,
-        storedHash
+        String(
+          storedSalt
+        ),
+        String(
+          storedHash
+        )
       );
 
     if (!valid) {
@@ -865,18 +917,18 @@ async function login(
 
     const token =
       await createToken(
-        storedId,
+        String(storedId),
         env.JWT_SECRET
       );
 
     return json({
       success: true,
-      vertexId: storedId,
+      vertexId:
+        String(storedId),
       token
     });
 
   } catch (error) {
-
     console.error(
       "Login error:",
       error
@@ -926,12 +978,10 @@ async function me(
 
 
 /* =========================================================
-   TOKEN ENCRYPTION
+   AES-256-GCM ENCRYPTION
 ========================================================= */
 
-async function getEncryptionKey(
-  env
-) {
+async function getEncryptionKey(env) {
   if (
     !env.TOKEN_ENCRYPTION_KEY
   ) {
@@ -949,7 +999,7 @@ async function getEncryptionKey(
     keyBytes.length !== 32
   ) {
     throw new Error(
-      "TOKEN_ENCRYPTION_KEY must be exactly 32 bytes"
+      "TOKEN_ENCRYPTION_KEY must decode to 32 bytes"
     );
   }
 
@@ -966,7 +1016,6 @@ async function getEncryptionKey(
     ]
   );
 }
-
 
 async function encryptToken(
   token,
@@ -996,7 +1045,9 @@ async function encryptToken(
 
   return JSON.stringify({
     iv:
-      bytesToBase64Url(iv),
+      bytesToBase64Url(
+        iv
+      ),
 
     data:
       bytesToBase64Url(
@@ -1009,21 +1060,15 @@ async function encryptToken(
 
 
 /* =========================================================
-   LOCALHOST VALIDATION
+   LOCAL RETURN URL
 ========================================================= */
 
 function isAllowedLocalReturnUrl(
   value
 ) {
   try {
-
     const url =
       new URL(value);
-
-    /*
-      Only HTTP/HTTPS localhost
-      addresses are accepted.
-    */
 
     if (
       url.protocol !== "http:" &&
@@ -1035,15 +1080,11 @@ function isAllowedLocalReturnUrl(
     const hostname =
       url.hostname.toLowerCase();
 
-    if (
+    return (
       hostname === "localhost" ||
       hostname === "127.0.0.1" ||
       hostname === "::1"
-    ) {
-      return true;
-    }
-
-    return false;
+    );
 
   } catch {
     return false;
@@ -1060,20 +1101,22 @@ async function createOAuthState(
   returnUrl,
   env
 ) {
-  const now =
-    Math.floor(
-      Date.now() / 1000
-    );
-
   const payload = {
     vertexId,
-    returnUrl,
-    iat: now,
-    exp: now + 10 * 60,
 
-    /*
-      Random one-time identifier.
-    */
+    returnUrl,
+
+    iat:
+      Math.floor(
+        Date.now() / 1000
+      ),
+
+    exp:
+      Math.floor(
+        Date.now() / 1000
+      ) +
+      10 * 60,
+
     nonce:
       bytesToBase64Url(
         crypto.getRandomValues(
@@ -1099,7 +1142,6 @@ async function createOAuthState(
 
   return `${encoded}.${signature}`;
 }
-
 
 async function verifyOAuthState(
   state,
@@ -1135,7 +1177,6 @@ async function verifyOAuthState(
   }
 
   try {
-
     const data =
       JSON.parse(
         new TextDecoder().decode(
@@ -1177,6 +1218,23 @@ async function verifyOAuthState(
 
 /* =========================================================
    GOOGLE START
+   POST /api/cloud/google/start
+
+   The local Setup application sends:
+
+   Authorization: Bearer <JWT>
+
+   {
+     "returnUrl":
+       "http://127.0.0.1:43721/oauth/callback"
+   }
+
+   Worker returns:
+
+   {
+     "success": true,
+     "authorizationUrl": "..."
+   }
 ========================================================= */
 
 async function googleStart(
@@ -1199,23 +1257,29 @@ async function googleStart(
     );
   }
 
-  const url =
-    new URL(
-      request.url
-    );
+  const body =
+    await readJson(request);
 
-  const returnUrl =
-    url.searchParams.get(
-      "return_url"
-    );
-
-  if (
-    !returnUrl
-  ) {
+  if (!body) {
     return json(
       {
         error:
-          "return_url is required"
+          "Invalid JSON"
+      },
+      400
+    );
+  }
+
+  const returnUrl =
+    String(
+      body.returnUrl || ""
+    ).trim();
+
+  if (!returnUrl) {
+    return json(
+      {
+        error:
+          "returnUrl is required"
       },
       400
     );
@@ -1229,7 +1293,7 @@ async function googleStart(
     return json(
       {
         error:
-          "return_url must be a localhost or 127.0.0.1 URL"
+          "returnUrl must be localhost, 127.0.0.1 or ::1"
       },
       400
     );
@@ -1300,10 +1364,12 @@ async function googleStart(
     state
   );
 
-  return Response.redirect(
-    googleUrl.toString(),
-    302
-  );
+  return json({
+    success: true,
+
+    authorizationUrl:
+      googleUrl.toString()
+  });
 }
 
 
@@ -1361,11 +1427,9 @@ async function exchangeGoogleCode(
   const data =
     await response.json();
 
-  if (
-    !response.ok
-  ) {
+  if (!response.ok) {
     console.error(
-      "Google token exchange:",
+      "Google token exchange failed:",
       data
     );
 
@@ -1413,14 +1477,7 @@ async function googleCallback(
   env
 ) {
   const url =
-    new URL(
-      request.url
-    );
-
-  const error =
-    url.searchParams.get(
-      "error"
-    );
+    new URL(request.url);
 
   const code =
     url.searchParams.get(
@@ -1432,16 +1489,14 @@ async function googleCallback(
       "state"
     );
 
+  const error =
+    url.searchParams.get(
+      "error"
+    );
+
 
   if (error) {
-
-    /*
-      We cannot trust an arbitrary return URL
-      until the state has been verified.
-    */
-
     if (state) {
-
       const stateData =
         await verifyOAuthState(
           state,
@@ -1451,7 +1506,6 @@ async function googleCallback(
       if (
         stateData?.returnUrl
       ) {
-
         const returnUrl =
           new URL(
             stateData.returnUrl
@@ -1522,21 +1576,12 @@ async function googleCallback(
 
 
   try {
-
-    /*
-      1. Exchange Google authorization code.
-    */
-
     const tokenData =
       await exchangeGoogleCode(
         code,
         env
       );
 
-
-    /*
-      2. Get Google account.
-    */
 
     let googleAccount =
       null;
@@ -1558,7 +1603,7 @@ async function googleCallback(
 
 
     /*
-      3. Find Vertex user.
+      Find Vertex user.
     */
 
     const userResult =
@@ -1574,20 +1619,24 @@ async function googleCallback(
       );
 
     const userRows =
-      userResult.rows || [];
+      Array.isArray(
+        userResult.rows
+      )
+        ? userResult.rows
+        : [];
 
     if (
-      !userRows.length
+      userRows.length === 0
     ) {
       throw new Error(
         "Vertex user not found"
       );
     }
 
-
     const userValues =
-      userRows[0].values ||
-      userRows[0];
+      extractRowValues(
+        userRows[0]
+      );
 
     const userId =
       extractValue(
@@ -1596,7 +1645,7 @@ async function googleCallback(
 
 
     /*
-      4. Check existing token.
+      Check existing connection.
     */
 
     const existingResult =
@@ -1617,39 +1666,41 @@ async function googleCallback(
       );
 
     const existingRows =
-      existingResult.rows ||
-      [];
+      Array.isArray(
+        existingResult.rows
+      )
+        ? existingResult.rows
+        : [];
 
     let encryptedRefreshToken =
       null;
 
     if (
-      existingRows.length
+      existingRows.length > 0
     ) {
-
-      const values =
-        existingRows[0].values ||
-        existingRows[0];
+      const existingValues =
+        extractRowValues(
+          existingRows[0]
+        );
 
       encryptedRefreshToken =
         extractValue(
-          values[0]
+          existingValues[0]
         );
     }
 
 
     /*
-      5. Google normally gives a refresh token
-         on the first offline authorization.
+      Google may only provide a refresh
+      token on the first consent.
 
-         If Google doesn't return one later,
-         preserve the existing encrypted token.
+      Preserve the old token if Google
+      does not return a new one.
     */
 
     if (
       tokenData.refresh_token
     ) {
-
       encryptedRefreshToken =
         await encryptToken(
           tokenData.refresh_token,
@@ -1657,23 +1708,22 @@ async function googleCallback(
         );
     }
 
-
     if (
       !encryptedRefreshToken
     ) {
-
       throw new Error(
-        "Google did not provide a refresh token"
+        "No Google refresh token available"
       );
     }
 
 
-    /*
-      6. Save encrypted token.
-    */
-
     const now =
       new Date().toISOString();
+
+
+    /*
+      Save/update Google connection.
+    */
 
     await tursoQuery(
       env,
@@ -1694,7 +1744,6 @@ async function googleCallback(
 
       ON CONFLICT(user_id, provider)
       DO UPDATE SET
-
         provider_account_id =
           excluded.provider_account_id,
 
@@ -1729,15 +1778,14 @@ async function googleCallback(
 
       vertexId,
 
-      providerAccount:
+      googleAccount:
         googleAccount?.email ||
-        providerAccountId ||
         "connected"
     });
 
 
     /*
-      7. Return to LOCAL setup application.
+      Return to the LOCAL setup page.
     */
 
     returnUrl.searchParams.set(
@@ -1756,7 +1804,6 @@ async function googleCallback(
     );
 
   } catch (error) {
-
     console.error(
       "Google callback error:",
       error
@@ -1816,16 +1863,13 @@ async function googleStatus(
         created_at,
         updated_at
       FROM cloud_connections
-
       WHERE user_id = (
         SELECT id
         FROM users
         WHERE vertex_id = ?
         LIMIT 1
       )
-
       AND provider = ?
-
       LIMIT 1
       `,
       [
@@ -1835,9 +1879,15 @@ async function googleStatus(
     );
 
   const rows =
-    result.rows || [];
+    Array.isArray(
+      result.rows
+    )
+      ? result.rows
+      : [];
 
-  if (!rows.length) {
+  if (
+    rows.length === 0
+  ) {
     return json({
       success: true,
       connected: false,
@@ -1847,8 +1897,9 @@ async function googleStatus(
   }
 
   const values =
-    rows[0].values ||
-    rows[0];
+    extractRowValues(
+      rows[0]
+    );
 
   return json({
     success: true,
@@ -1889,7 +1940,7 @@ async function googleStatus(
 
 
 /* =========================================================
-   DISCONNECT
+   GOOGLE DISCONNECT
 ========================================================= */
 
 async function googleDisconnect(
@@ -1916,14 +1967,12 @@ async function googleDisconnect(
     env,
     `
     DELETE FROM cloud_connections
-
     WHERE user_id = (
       SELECT id
       FROM users
       WHERE vertex_id = ?
       LIMIT 1
     )
-
     AND provider = ?
     `,
     [
@@ -1946,10 +1995,8 @@ async function googleDisconnect(
 function health() {
   return json({
     status: "ok",
-    service:
-      "vertexid-api",
-    version:
-      "0.3.0"
+    service: "vertexid-api",
+    version: "0.4.0"
   });
 }
 
@@ -1959,12 +2006,10 @@ function health() {
 ========================================================= */
 
 export default {
-
   async fetch(
     request,
     env
   ) {
-
     if (
       request.method ===
       "OPTIONS"
@@ -1980,13 +2025,14 @@ export default {
     }
 
     const url =
-      new URL(request.url);
-
+      new URL(
+        request.url
+      );
 
     try {
 
       /*
-        Required API secrets.
+        Required Vertex ID secrets.
       */
 
       if (
@@ -2004,9 +2050,7 @@ export default {
       }
 
 
-      /*
-        HEALTH
-      */
+      /* HEALTH */
 
       if (
         url.pathname ===
@@ -2018,9 +2062,7 @@ export default {
       }
 
 
-      /*
-        REGISTER
-      */
+      /* REGISTER */
 
       if (
         url.pathname ===
@@ -2028,7 +2070,6 @@ export default {
         request.method ===
           "POST"
       ) {
-
         await ensureSchema(
           env
         );
@@ -2040,9 +2081,7 @@ export default {
       }
 
 
-      /*
-        LOGIN
-      */
+      /* LOGIN */
 
       if (
         url.pathname ===
@@ -2050,7 +2089,6 @@ export default {
         request.method ===
           "POST"
       ) {
-
         await ensureSchema(
           env
         );
@@ -2062,9 +2100,7 @@ export default {
       }
 
 
-      /*
-        ME
-      */
+      /* ME */
 
       if (
         url.pathname ===
@@ -2082,22 +2118,19 @@ export default {
       /*
         GOOGLE START
 
-        Example:
+        IMPORTANT:
+        POST, not GET.
 
-        GET /api/cloud/google/start
-            ?return_url=http://127.0.0.1:43721/oauth/callback
-
-        Authorization:
-        Bearer YOUR_JWT
+        The local setup app sends
+        the JWT in Authorization.
       */
 
       if (
         url.pathname ===
           "/api/cloud/google/start" &&
         request.method ===
-          "GET"
+          "POST"
       ) {
-
         return googleStart(
           request,
           env
@@ -2108,7 +2141,7 @@ export default {
       /*
         GOOGLE CALLBACK
 
-        Google calls this.
+        Google redirects here.
       */
 
       if (
@@ -2117,7 +2150,6 @@ export default {
         request.method ===
           "GET"
       ) {
-
         await ensureSchema(
           env
         );
@@ -2129,9 +2161,7 @@ export default {
       }
 
 
-      /*
-        GOOGLE STATUS
-      */
+      /* GOOGLE STATUS */
 
       if (
         url.pathname ===
@@ -2139,7 +2169,6 @@ export default {
         request.method ===
           "GET"
       ) {
-
         return googleStatus(
           request,
           env
@@ -2147,9 +2176,7 @@ export default {
       }
 
 
-      /*
-        GOOGLE DISCONNECT
-      */
+      /* GOOGLE DISCONNECT */
 
       if (
         url.pathname ===
@@ -2157,7 +2184,6 @@ export default {
         request.method ===
           "POST"
       ) {
-
         return googleDisconnect(
           request,
           env
@@ -2174,7 +2200,6 @@ export default {
       );
 
     } catch (error) {
-
       console.error(
         "Worker error:",
         error
