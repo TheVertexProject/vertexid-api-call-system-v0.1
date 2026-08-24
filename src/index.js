@@ -51,7 +51,7 @@ async function hashPassword(password, saltBytes = crypto.getRandomValues(new Uin
     {
       name: "PBKDF2",
       salt: saltBytes,
-      iterations: 120000,
+      iterations: 100000,
       hash: "SHA-256"
     },
     key,
